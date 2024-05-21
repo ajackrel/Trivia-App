@@ -1,3 +1,18 @@
+/*
+Author: Adam Jackrel
+Date: Fall/Spring 2023-24
+
+This app is designed to reinforce the advanced Android concepts. SharedPreference, Intents and App
+Lifecycle are heavily used in this app. Of course, the RecyclerView is again
+the main attraction of the app.
+
+This app also utilizes JSON files to function. The app is designed to allow pretty much any
+custom data set to be used. Simply modify the code to fit the needs of the data and it shouldn't be
+too much trouble.
+
+Feel free to modify the contents of this program and make improvements as you wish!
+ */
+
 package com.example.triviaapptest;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,14 +51,23 @@ public class MainActivity extends AppCompatActivity{
     SharedPreferences sharedPreferences;
     private RecyclerView recyclerView;
     private RecyclerAdapter recyclerAdapter;
+    //stores all of the JSON data
     private ArrayList<TriviaList> triviaList = new ArrayList<>();
-
+    //displays the number of correct answers
     private TextView correct;
+    //displays the players cash
     private TextView cash;
+    //new game button - sets cash and correct to 0
     private Button new_game;
 
-    int money = 3;
+
+    int money = 0;
     int correctly_answered = 0;
+
+    //stores the total accumulated money the player has earned
+    int total = 0;
+    //stores the total accumulated answer count for the player
+    int correctAnswers = 0;
 
 
     @SuppressLint("MissingInflatedId")
@@ -62,13 +86,14 @@ public class MainActivity extends AppCompatActivity{
         recyclerAdapter = new RecyclerAdapter(triviaList, MainActivity.this);
         recyclerView.setAdapter(recyclerAdapter);
 
+        //load the JSON from the Asset file location
         String temp = loadJSONFromAsset();
 
+        //must be inside of a try-catch block
+        //create the ArrayList
         try {
             JSONArray obj = new JSONArray(temp);
             setUpTriviaArrays(obj);
-            //  String question = obj.getString(40);
-            // obj.getString("question");
         }
         catch (JSONException e) {
             throw new RuntimeException(e);
@@ -76,45 +101,51 @@ public class MainActivity extends AppCompatActivity{
 
         sharedPreferences = getSharedPreferences("saveData", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-//        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
 
-
-//        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferencesName(this);
-//        String s1 = sh.getString("name", "");
-
-        System.out.println("money is: "  +money);
-
-        //editor.putInt("cash", money);
-        //editor.commit();
-
+        //retrieve and store the intent
         Intent intent = getIntent();
-        System.out.println("STORED: " +sharedPreferences.getInt("cash", 17));
-        System.out.println("NEW: " +intent.getIntExtra("correct", 0));
 
-        money = sharedPreferences.getInt("cash", 0) + intent.getIntExtra("correct", 0);
-        System.out.println("updated money is: "  +money);
-        editor.putInt("cash", money);
+        //add it to the previously stored value first
+        total = intent.getIntExtra("cash", 70) + sharedPreferences.getInt("cash", 71);
+        correctAnswers = intent.getIntExtra("number_answered", 72) + sharedPreferences.getInt("answered", 73);
 
-        correctly_answered = sharedPreferences.getInt("cash", 0) + intent.getIntExtra("correct", 0);
+        //enter the key-value pair into the database - this is for the money
+        editor.putInt("cash", total);
+        //enter the key-value pair into the database - this is for the questions
+        editor.putInt("answered", correctAnswers);
 
+        //save the changes to the database
         editor.commit();
 
+        cash.setText("$" +total*correctAnswers);
+        correct.setText(correctAnswers +"/15 correct");
 
-//
-//        System.out.println("money is: "  +money);
-        cash.setText("$" +money);
-
+        //event listener for the NEW GAME button - clears players progress
         new_game.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 editor.clear();
                 editor.apply();
                 cash.setText("$0");
+                correct.setText("0/15 correct");
+                total = 0;
+                correctAnswers = 0;
+
+                //enter the key-value pair into the database - this is for the money
+                editor.putInt("cash", total);
+                //enter the key-value pair into the database - this is for the questions
+                editor.putInt("answered", correctAnswers);
+                editor.commit();
+
             }
         });
 
     }
 
+    /*
+        This method takes the String parsed by the loadJSONFromAsset() method and converts
+        it to an Java arraylist.
+     */
     private void setUpTriviaArrays(JSONArray obj) throws JSONException {
 
         for(int i = 0; i < obj.length(); i++){
@@ -125,14 +156,16 @@ public class MainActivity extends AppCompatActivity{
             String b = entry.getString("B");
             String c = entry.getString("C");
             String d = entry.getString("D");
-//            System.out.println(question);
-//            System.out.println(answer);
+
             triviaList.add(new TriviaList(question, answer, a, b, c, d));
 
         }
 
     }
 
+    /*
+   This method converts the JSON file to a JSONArray format that will be used in setUpTriviaArrays()
+    */
     public String loadJSONFromAsset() {
         System.out.println("inside of loadJSONFromAsset");
         String json = null;
